@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -eEuo pipefail
+
+target=$1
+
+sudo /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport --getinfo
+echo
+
+while true
+do
+  ping_line=$(ping -t 1 -c 1 "$target" | grep time || echo "foo foo foo foo foo foo time=err")
+  ping_array=($ping_line)
+  ping_time=${ping_array[6]}
+  ping=${ping_time#*=}
+
+  airport_contents=$(sudo /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport --getinfo || true)
+
+  ssid_lines=$(echo "$airport_contents" | grep SSID || echo "")
+
+  if [[ "$ssid_lines" == "" ]]
+  then
+    ssid_line="foo err"
+  else
+    ssid_line=$(echo "$ssid_lines" | tail -n1)
+    [[ "$ssid_line" == "" ]] && ssid_line="foo err"
+  fi
+
+  ssid_array=($ssid_line)
+  ssid=${ssid_array[1]}
+
+  bssid_line=$(echo "$ssid_lines" | grep BSSID || echo "foo err")
+  bssid_array=($bssid_line)
+  bssid=${bssid_array[1]}
+
+  rrsi_line=$(echo "$airport_contents" | grep agrCtlRSSI || echo "foo err")
+  rssi_array=($rrsi_line)
+  rssi=${rssi_array[1]}
+
+  echo "SSID: $ssid - BSSID: $bssid - RSSI: $rssi - ping: $ping"
+  sleep 0.3
+done
